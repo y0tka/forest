@@ -5,7 +5,7 @@
 ## Minor
 - [ ] Rewrite to generic types / functions
 - [ ] Flames
-- [ ] Plant growth
+- [x] Plant growth
 - [ ] less awful readme
 ## Major
 - [ ] Separate core from the visuals
