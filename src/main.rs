@@ -13,12 +13,19 @@ const TREE_COUNT: usize = 5;
 const FRAME_DELAY: u64 = 250;
 // const SIMULATION_STEPS: usize = 20;
 
+pub mod types;
+use crate::types::*;
+
 fn main() {
     let mut field: Vec<Cell> = repeat_with(|| Cell::new()).take(FIELD_AREA).collect();
 
     // GRASS FILL
-    rnd_fill_empty(&mut field, GRASS_COUNT, State::Grass);
-    rnd_fill_empty(&mut field, TREE_COUNT, State::Tree);
+    rnd_fill_empty(&mut field, GRASS_COUNT, CellType::Grass);
+    rnd_fill_empty(&mut field, TREE_COUNT, CellType::Tree);
+
+    // field[45].cell_type = CellType::Tree;
+    // field[45].age = 1;
+    // field[45].propagation = 1;
 
     // SIMULATION
     loop {
@@ -29,7 +36,7 @@ fn main() {
         field = propagate(&field);
         print_field(&field);
         if field.iter().all(|ele| ele.age > 10) {
-            field_stats(&field);
+            println!("{:?}", field_stats(&field));
             break;
         }
         // println!("{:?}", &field);
@@ -41,24 +48,26 @@ fn clear() {
     print!("{}[2J", 27 as char);
 }
 
-fn cartesian_to_linear(y: usize, x: usize, field_size: usize) -> Result<usize, &'static str> {
-    let res = x * field_size + y;
-    if res < field_size * field_size {
-        return Ok(res);
-    } else {
+fn cartesian_to_linear(y: usize, x: usize, field: &Vec<Cell>) -> Result<usize, &'static str> {
+    let area = field.len();
+    let side = f32::sqrt(area as f32).floor() as usize;
+    if y >= side || x >= side {
         return Err("Out of Bounds (C2L)");
     }
+    let res = x * side + y;
+    return Ok(res);
 }
 
 fn linear_to_cartesian(position: usize, field: &Vec<Cell>) -> Result<(usize, usize), &'static str> {
+    let side = f32::sqrt(field.len() as f32).floor() as usize;
     if position >= field.len() {
         return Err("Out of Bounds (L2C)");
     }
-    return Ok((position % field.len(), position / field.len()));
+    return Ok((position % side, position / side));
 }
 
-fn field_stats(field: &Vec<Cell>) -> HashMap<State, u8> {
-    let mut res: HashMap<State, u8> = HashMap::new();
+fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, u8> {
+    let mut res: HashMap<CellType, u8> = HashMap::new();
     for ele in field.iter() {
         if res.contains_key(&ele.cell_type) {
             res.insert(
@@ -72,14 +81,14 @@ fn field_stats(field: &Vec<Cell>) -> HashMap<State, u8> {
     return res;
 }
 
-fn rnd_fill_empty(field: &mut Vec<Cell>, count: usize, cell_type: State) {
+fn rnd_fill_empty(field: &mut Vec<Cell>, count: usize, cell_type: CellType) {
     let mut to_fill: usize = count;
     while to_fill > 0 {
         let x = rand::thread_rng().gen_range(0..FIELD_SIZE);
         let y = rand::thread_rng().gen_range(0..FIELD_SIZE);
-        match cartesian_to_linear(x, y, FIELD_SIZE) {
+        match cartesian_to_linear(x, y, field) {
             Ok(coord) => match field[coord].cell_type {
-                State::Empty => {
+                CellType::Empty => {
                     field[coord].cell_type = cell_type.clone();
                     field[coord].age = rand::thread_rng().gen_range(0..10);
                     to_fill -= 1;
@@ -98,7 +107,7 @@ fn print_field(field: &Vec<Cell>) {
     for row in 0..FIELD_SIZE {
         print!("│");
         for col in 0..FIELD_SIZE {
-            match cartesian_to_linear(row, col, FIELD_SIZE) {
+            match cartesian_to_linear(row, col, field) {
                 Ok(coord) => {
                     field[coord].print();
                 }
@@ -124,7 +133,7 @@ fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
                 let x_p: f32 = thread_rng().gen();
                 let y_p: f32 = thread_rng().gen();
                 let offset: [isize; 2];
-                if x_p > y_p {
+                if y_p > x_p {
                     offset = [0, *vec![-1, 1].choose(&mut rand::thread_rng()).unwrap()];
                 } else {
                     offset = [*vec![-1, 1].choose(&mut rand::thread_rng()).unwrap(), 0];
@@ -138,10 +147,10 @@ fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
                     Some(res) => y = res,
                     None => continue,
                 }
-                match cartesian_to_linear(x, y, FIELD_SIZE) {
+                match cartesian_to_linear(x, y, field) {
                     Ok(coord) => match ele.cell_type {
-                        State::Grass | State::Tree => match return_field[coord].cell_type {
-                            State::Empty => {
+                        CellType::Grass | CellType::Tree => match return_field[coord].cell_type {
+                            CellType::Empty => {
                                 return_field[coord].cell_type = ele.cell_type.clone();
                                 return_field[coord].age = 0;
                                 return_field[coord].propagation = 1;
@@ -157,84 +166,4 @@ fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
         }
     }
     return return_field;
-}
-
-#[derive(Debug, Clone)]
-struct Cell {
-    pub age: u8,
-    pub cell_type: State,
-    pub propagation: u8,
-}
-
-impl Default for Cell {
-    fn default() -> Self {
-        Self {
-            age: 0,
-            cell_type: State::Empty,
-            propagation: 1,
-        }
-    }
-}
-
-impl Cell {
-    fn new() -> Cell {
-        Cell {
-            age: 0,
-            cell_type: State::Empty,
-            propagation: 1,
-        }
-    }
-
-    #[allow(unreachable_patterns)]
-    fn print(&self) {
-        match self.cell_type {
-            State::Empty => print!("  "),
-            State::Grass => {
-                print!(
-                    "{} ",
-                    Colour::Green.paint(match self.age {
-                        0 => "▁",
-                        1 => "▂",
-                        2 => "▃",
-                        3 => "▄",
-                        4 => "▅",
-                        5 => "▆",
-                        6 => "▇",
-                        _ => "󱔐",
-                    })
-                );
-            }
-            State::Tree => {
-                print!(
-                    "{} ",
-                    Colour::Green.paint(match self.age {
-                        0 => "▁",
-                        1 => "▂",
-                        2 => "▃",
-                        3 => "▄",
-                        4 => "▅",
-                        5 => "▆",
-                        6 => "▇",
-                        _ => "",
-                    })
-                )
-            }
-            _ => print!("? "),
-        }
-    }
-
-    fn step(&mut self) -> Self {
-        Self {
-            age: self.age + 1,
-            cell_type: self.cell_type.clone(),
-            propagation: self.propagation,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-enum State {
-    Empty,
-    Grass,
-    Tree,
 }
