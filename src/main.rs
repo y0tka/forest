@@ -8,8 +8,9 @@ use std::time::Duration;
 
 const FIELD_SIZE: usize = 10;
 const FIELD_AREA: usize = FIELD_SIZE * FIELD_SIZE;
-const GRASS_COUNT: usize = 5;
-const TREE_COUNT: usize = 5;
+const GRASS_COUNT: usize = 0;
+const TREE_COUNT: usize = 0;
+const FLAME_COUNT: usize = 0;
 const FRAME_DELAY: u64 = 250;
 // const SIMULATION_STEPS: usize = 20;
 
@@ -19,9 +20,10 @@ use crate::types::*;
 fn main() {
     let mut field: Vec<Cell> = repeat_with(|| Cell::new()).take(FIELD_AREA).collect();
 
-    // GRASS FILL
+    // FIELD FILL
     rnd_fill_empty(&mut field, GRASS_COUNT, CellType::Grass);
     rnd_fill_empty(&mut field, TREE_COUNT, CellType::Tree);
+    rnd_fill_empty(&mut field, FLAME_COUNT, CellType::Flame);
 
     // field[45].cell_type = CellType::Tree;
     // field[45].age = 1;
@@ -35,7 +37,7 @@ fn main() {
         }
         field = propagate(&field);
         print_field(&field);
-        if field.iter().all(|ele| ele.age > 10) {
+        if field.iter().all(|ele| ele.age > 10 || ele.age == 0) {
             println!("{:?}", field_stats(&field));
             break;
         }
@@ -151,6 +153,14 @@ fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
                     Ok(coord) => match ele.cell_type {
                         CellType::Grass | CellType::Tree => match return_field[coord].cell_type {
                             CellType::Empty => {
+                                return_field[coord].cell_type = ele.cell_type.clone();
+                                return_field[coord].age = 0;
+                                return_field[coord].propagation = 1;
+                            }
+                            _ => (),
+                        },
+                        CellType::Flame => match return_field[coord].cell_type {
+                            CellType::Grass | CellType::Tree => {
                                 return_field[coord].cell_type = ele.cell_type.clone();
                                 return_field[coord].age = 0;
                                 return_field[coord].propagation = 1;
