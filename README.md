@@ -4,7 +4,7 @@
 # todo
 ## Minor
 - [ ] Rewrite to generic types / functions
-- [ ] Flames
+- [x] Flames
 - [x] Plant growth
 - [ ] less awful readme
 ## Major
