@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::iter::repeat_with;
 use std::thread;
 use std::time::Duration;
+use strum::IntoEnumIterator;
 
 const FIELD_SIZE: usize = 10;
 
@@ -74,15 +75,14 @@ fn linear_to_cartesian(position: usize, field: &Vec<Cell>) -> Result<(usize, usi
 
 fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, u32> {
     let mut res: HashMap<CellType, u32> = HashMap::new();
+    for c in CellType::iter() {
+        res.insert(c, 0);
+    }
     for ele in field.iter() {
-        if res.contains_key(&ele.cell_type) {
-            res.insert(
-                ele.cell_type.clone(),
-                res.get(&ele.cell_type).copied().unwrap() + 1,
-            );
-        } else {
-            res.insert(ele.cell_type.clone(), 1);
-        }
+        res.insert(
+            ele.cell_type.clone(),
+            res.get(&ele.cell_type).copied().unwrap() + 1,
+        );
     }
     return res;
 }

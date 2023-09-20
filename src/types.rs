@@ -1,4 +1,6 @@
 use crate::Colour;
+use strum_macros::EnumIter;
+
 #[derive(Debug, Clone)]
 pub struct Cell {
     pub age: u8,
@@ -103,7 +105,7 @@ impl Cell {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter)]
 pub enum CellType {
     Empty,
     Grass,
