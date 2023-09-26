@@ -3,9 +3,9 @@
 
 # todo
 ## Minor
-- [ ] Rewrite to generic types / functions
+~~- [ ] Rewrite to generic types / functions~~
 - [x] Flames
 - [x] Plant growth
 - [ ] less awful readme
 ## Major
-- [ ] Separate core from the visuals
+- [x] Separate core from the visuals
