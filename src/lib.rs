@@ -1,47 +1,126 @@
-use ansi_term::Colour;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::iter::repeat_with;
-use std::thread;
-use std::time::Duration;
 use strum::IntoEnumIterator;
 
-const FIELD_SIZE: usize = 10;
+use ansi_term::Colour;
+use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
-const GRASS_COUNT: usize = 8;
-const TREE_COUNT: usize = 8;
-const FLAME_COUNT: usize = 2;
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Cell {
+    pub age: u8,
+    pub cell_type: CellType,
+    pub propagation: u8,
+}
 
-const FRAME_DELAY: u64 = 300;
-const SIMULATION_STEPS: usize = 100;
+impl Default for Cell {
+    fn default() -> Self {
+        Self {
+            age: 0,
+            cell_type: CellType::Empty,
+            propagation: 1,
+        }
+    }
+}
 
-pub mod types;
-use crate::types::*;
-
-fn main() {
-    let mut field: Vec<Cell> = get_new_field(FIELD_SIZE);
-
-    field = rnd_fill_empty(&mut field, GRASS_COUNT, CellType::Grass);
-    field = rnd_fill_empty(&mut field, TREE_COUNT, CellType::Tree);
-    field = rnd_fill_empty(&mut field, FLAME_COUNT, CellType::Flame);
-
-    for _ in 0..SIMULATION_STEPS {
-        clear();
-        field = get_field_step(&field);
-        print_field(&field);
-
-        thread::sleep(Duration::from_millis(FRAME_DELAY));
+impl Cell {
+    pub fn new() -> Cell {
+        Cell {
+            age: 0,
+            cell_type: CellType::Empty,
+            propagation: 1,
+        }
     }
 
-    println!("{:?}", field_stats(&field));
+    #[allow(unreachable_patterns)]
+    pub fn print(&self) {
+        match self.cell_type {
+            CellType::Empty => print!("  "),
+            CellType::Grass => {
+                print!(
+                    "{} ",
+                    Colour::Green.paint(match self.age {
+                        0 => "▁",
+                        1 => "▂",
+                        2 => "▃",
+                        3 => "▄",
+                        4 => "▅",
+                        5 => "▆",
+                        6 => "▇",
+                        _ => "󱔐",
+                    })
+                );
+            }
+            CellType::Tree => {
+                print!(
+                    "{} ",
+                    Colour::Green.paint(match self.age {
+                        0 => "▁",
+                        1 => "▂",
+                        2 => "▃",
+                        3 => "▄",
+                        4 => "▅",
+                        5 => "▆",
+                        6 => "▇",
+                        _ => "",
+                    })
+                )
+            }
+            CellType::Flame => {
+                print!(
+                    "{} ",
+                    Colour::Red.paint(match self.age {
+                        0 => "▁",
+                        1 => "▂",
+                        2 => "▃",
+                        3 => "▄",
+                        4 => "▅",
+                        5 => "▆",
+                        6 => "▇",
+                        _ => "",
+                    })
+                )
+            }
+            _ => print!("? "),
+        }
+    }
+
+    pub fn step(&mut self) -> Self {
+        match self.cell_type {
+            CellType::Flame => {
+                if self.age > 15 {
+                    return Self {
+                        age: 0,
+                        cell_type: CellType::Empty,
+                        propagation: 0,
+                    };
+                }
+                return Self {
+                    age: self.age + 1,
+                    cell_type: self.cell_type.clone(),
+                    propagation: self.propagation,
+                };
+            }
+            _ => Self {
+                age: self.age + 1,
+                cell_type: self.cell_type.clone(),
+                propagation: self.propagation,
+            },
+        }
+    }
 }
 
-fn clear() {
-    print!("{}[2J", 27 as char);
+#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter, Serialize, Deserialize)]
+pub enum CellType {
+    Empty,
+    Grass,
+    Tree,
+    Flame,
 }
 
-fn get_field_step(field: &Vec<Cell>) -> Vec<Cell> {
+pub fn get_field_step(field: &Vec<Cell>) -> Vec<Cell> {
     let mut return_field = field.clone().to_vec();
     for cell in return_field.iter_mut() {
         *cell = cell.step();
@@ -50,12 +129,25 @@ fn get_field_step(field: &Vec<Cell>) -> Vec<Cell> {
     return return_field;
 }
 
-fn get_new_field(size: usize) -> Vec<Cell> {
+pub fn get_empty_field(size: usize) -> Vec<Cell> {
     let field: Vec<Cell> = repeat_with(|| Cell::new()).take(size * size).collect();
     return field;
 }
 
-fn cartesian_to_linear(y: usize, x: usize, field: &Vec<Cell>) -> Result<usize, &'static str> {
+pub fn get_random_field(
+    size: usize,
+    grass_count: usize,
+    tree_count: usize,
+    flame_count: usize,
+) -> Vec<Cell> {
+    let mut field = get_empty_field(size);
+    field = rnd_fill_empty(&field, grass_count, CellType::Grass);
+    field = rnd_fill_empty(&field, tree_count, CellType::Tree);
+    field = rnd_fill_empty(&field, flame_count, CellType::Flame);
+    return field;
+}
+
+pub fn cartesian_to_linear(y: usize, x: usize, field: &Vec<Cell>) -> Result<usize, &'static str> {
     let area = field.len();
     let side = f32::sqrt(area as f32).floor() as usize;
     if y >= side || x >= side {
@@ -65,7 +157,10 @@ fn cartesian_to_linear(y: usize, x: usize, field: &Vec<Cell>) -> Result<usize, &
     return Ok(res);
 }
 
-fn linear_to_cartesian(position: usize, field: &Vec<Cell>) -> Result<(usize, usize), &'static str> {
+pub fn linear_to_cartesian(
+    position: usize,
+    field: &Vec<Cell>,
+) -> Result<(usize, usize), &'static str> {
     let side = f32::sqrt(field.len() as f32).floor() as usize;
     if position >= field.len() {
         return Err("Out of Bounds (L2C)");
@@ -73,8 +168,8 @@ fn linear_to_cartesian(position: usize, field: &Vec<Cell>) -> Result<(usize, usi
     return Ok((position % side, position / side));
 }
 
-fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, u32> {
-    let mut res: HashMap<CellType, u32> = HashMap::new();
+pub fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, usize> {
+    let mut res: HashMap<CellType, usize> = HashMap::new();
     for c in CellType::iter() {
         res.insert(c, 0);
     }
@@ -87,7 +182,7 @@ fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, u32> {
     return res;
 }
 
-fn rnd_fill_empty(field: &Vec<Cell>, count: usize, cell_type: CellType) -> Vec<Cell> {
+pub fn rnd_fill_empty(field: &Vec<Cell>, count: usize, cell_type: CellType) -> Vec<Cell> {
     let mut return_field = field.clone().to_vec();
     let side = f32::sqrt(return_field.len() as f32).floor() as usize;
     let mut to_fill: usize = count;
@@ -109,7 +204,7 @@ fn rnd_fill_empty(field: &Vec<Cell>, count: usize, cell_type: CellType) -> Vec<C
     return return_field;
 }
 
-fn print_field(field: &Vec<Cell>) {
+pub fn print_field(field: &Vec<Cell>) {
     let side = f32::sqrt(field.len() as f32).floor() as usize;
     print!("{}", "┌");
     print!("{}", "─".repeat(side * 2));
