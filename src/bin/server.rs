@@ -63,26 +63,23 @@ async fn main() {
                 },
                 _ => err = true,
             }
-            match p.get("grass") {
-                Some(v) => match v.parse::<usize>() {
+            if let Some(v) = p.get("grass") {
+                match v.parse::<usize>() {
                     Ok(parsed) => grass = parsed,
                     _ => err = true,
-                },
-                _ => (),
+                }
             }
-            match p.get("trees") {
-                Some(v) => match v.parse::<usize>() {
+            if let Some(v) = p.get("trees") {
+                match v.parse::<usize>() {
                     Ok(parsed) => trees = parsed,
                     _ => err = true,
-                },
-                _ => (),
+                }
             }
-            match p.get("flames") {
-                Some(v) => match v.parse::<usize>() {
+            if let Some(v) = p.get("flames") {
+                match v.parse::<usize>() {
                     Ok(parsed) => flames = parsed,
                     _ => err = true,
-                },
-                _ => (),
+                }
             }
             if err || (flames + grass + trees > size * size) {
                 return warp::reply::with_status(
@@ -90,10 +87,10 @@ async fn main() {
                     warp::http::StatusCode::BAD_REQUEST,
                 );
             }
-            return warp::reply::with_status(
+            warp::reply::with_status(
                 warp::reply::json(&get_random_field(size, grass, trees, flames)),
                 warp::http::StatusCode::OK,
-            );
+            )
         })
         .with(cors.clone());
 

@@ -44,12 +44,10 @@ fn get_random_field(
 
     match response.status() {
         StatusCode::OK => match response.json::<Vec<Cell>>() {
-            Ok(v) => {
-                return Ok(v);
-            }
+            Ok(v) => Ok(v),
             Err(e) => panic!("{}", e),
         },
-        e => return Err(e),
+        e => Err(e),
     }
 }
 
@@ -63,11 +61,9 @@ fn get_simulation_step(client: &Client, field: &Vec<Cell>) -> Result<Vec<Cell>, 
 
     match response.status() {
         StatusCode::OK => match response.json::<Vec<Cell>>() {
-            Ok(v) => {
-                return Ok(v);
-            }
+            Ok(v) => Ok(v),
             Err(e) => panic!("{}", e),
         },
-        e => return Err(e),
+        e => Err(e),
     }
 }
