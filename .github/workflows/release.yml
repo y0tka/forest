@@ -50,22 +50,22 @@ jobs:
         shell: bash
         if: matrix.config.os == 'windows-latest'
         run: |
-          release_dir="forest-egui-${{ env.RELEASE_VERSION }}"
-          artifact_path="forest-egui-${{ env.RELEASE_VERSION }}-${{ matrix.config.target }}.zip"
+          release_dir="forest-${{ env.RELEASE_VERSION }}"
+          artifact_path="forest-${{ env.RELEASE_VERSION }}-${{ matrix.config.target }}.zip"
           echo "ARTIFACT_PATH=$artifact_path" >> $GITHUB_ENV
           mkdir $release_dir
-          cp target/${{ matrix.config.target }}/release/forest-egui.exe $release_dir/
+          cp target/${{ matrix.config.target }}/release/forest.exe $release_dir/
           7z a -tzip $artifact_path $release_dir/
 
       - name: Prepare artifacts [Unix]
         shell: bash
         if: matrix.config.os != 'windows-latest'
         run: |
-          release_dir="forest-egui-${{ env.RELEASE_VERSION }}"
-          artifact_path="forest-egui-${{ env.RELEASE_VERSION }}-${{ matrix.config.target }}.tar.gz"
+          release_dir="forest-${{ env.RELEASE_VERSION }}"
+          artifact_path="forest-${{ env.RELEASE_VERSION }}-${{ matrix.config.target }}.tar.gz"
           echo "ARTIFACT_PATH=$artifact_path" >> $GITHUB_ENV
           mkdir $release_dir
-          cp target/${{ matrix.config.target }}/release/forest-egui $release_dir/
+          cp target/${{ matrix.config.target }}/release/forest $release_dir/
           tar -czvf $artifact_path $release_dir/
 
       - name: Upload artifacts
@@ -86,13 +86,13 @@ jobs:
         uses: actions/download-artifact@v2
 
       - name: Generate Checksums
-        run: for file in forest-egui-*/forest-egui-*; do openssl dgst -sha256 -r "$file" | awk '{print $1}' > "${file}.sha256"; done
+        run: for file in forest-*/forest-*; do openssl dgst -sha256 -r "$file" | awk '{print $1}' > "${file}.sha256"; done
 
       - name: Publish Release
         uses: svenstaro/upload-release-action@v2
         with:
           release_name: ${{ needs.build_release.outputs.release_version }}
-          file: forest-egui-*/forest-egui-*
+          file: forest-*/forest-*
           file_glob: true
           overwrite: true
           prerelease: ${{ github.event_name != 'push' }}
