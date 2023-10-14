@@ -6,7 +6,12 @@ use forest::{get_empty_field, get_field_step, get_random_field, Cell};
 
 #[tokio::main]
 async fn main() {
-    let simstep = warp::get()
+    let cors = warp::cors()
+        .allow_origin("http://0.0.0.0:8080")
+        .allow_header("Content-Type")
+        .allow_methods(vec!["GET", "POST"]);
+
+    let simstep = warp::post()
         .and(warp::path("v1"))
         .and(warp::path("simulation"))
         .and(warp::path("step"))
@@ -14,7 +19,8 @@ async fn main() {
         .map(|mut field: Vec<Cell>| {
             field = get_field_step(&field);
             warp::reply::json(&field)
-        });
+        })
+        .with(cors.clone());
 
     let fieldgen = warp::get()
         .and(warp::path("v1"))
@@ -36,7 +42,8 @@ async fn main() {
                 warp::reply::json(&""),
                 warp::http::StatusCode::BAD_REQUEST,
             ),
-        });
+        })
+        .with(cors.clone());
 
     let randomfield = warp::get()
         .and(warp::path("v1"))
@@ -77,7 +84,7 @@ async fn main() {
                 },
                 _ => (),
             }
-            if err {
+            if err || (flames + grass + trees > size * size) {
                 return warp::reply::with_status(
                     warp::reply::json(&""),
                     warp::http::StatusCode::BAD_REQUEST,
@@ -87,7 +94,8 @@ async fn main() {
                 warp::reply::json(&get_random_field(size, grass, trees, flames)),
                 warp::http::StatusCode::OK,
             );
-        });
+        })
+        .with(cors.clone());
 
     warp::serve(simstep.or(fieldgen).or(randomfield))
         .run(([127, 0, 0, 1], 3030))

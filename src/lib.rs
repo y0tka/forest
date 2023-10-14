@@ -1,8 +1,8 @@
 use rand::prelude::*;
 use rand::seq::SliceRandom;
-use std::collections::HashMap;
+use rand_chacha::ChaCha8Rng;
+
 use std::iter::repeat_with;
-use strum::IntoEnumIterator;
 
 use ansi_term::Colour;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Cell {
-    pub age: u8,
+    pub age: usize,
     pub cell_type: CellType,
     pub propagation: u8,
 }
@@ -88,27 +88,18 @@ impl Cell {
     }
 
     pub fn step(&mut self) -> Self {
-        match self.cell_type {
-            CellType::Flame => {
-                if self.age > 15 {
-                    return Self {
-                        age: 0,
-                        cell_type: CellType::Empty,
-                        propagation: 0,
-                    };
-                }
-                return Self {
-                    age: self.age + 1,
-                    cell_type: self.cell_type.clone(),
-                    propagation: self.propagation,
-                };
-            }
-            _ => Self {
-                age: self.age + 1,
-                cell_type: self.cell_type.clone(),
-                propagation: self.propagation,
-            },
+        if self.age > 15 && self.cell_type == CellType::Flame {
+            return Self {
+                age: 0,
+                cell_type: CellType::Empty,
+                propagation: 0,
+            };
         }
+        return Self {
+            age: self.age + 1,
+            cell_type: self.cell_type.clone(),
+            propagation: self.propagation,
+        };
     }
 }
 
@@ -168,32 +159,19 @@ pub fn linear_to_cartesian(
     return Ok((position % side, position / side));
 }
 
-pub fn field_stats(field: &Vec<Cell>) -> HashMap<CellType, usize> {
-    let mut res: HashMap<CellType, usize> = HashMap::new();
-    for c in CellType::iter() {
-        res.insert(c, 0);
-    }
-    for ele in field.iter() {
-        res.insert(
-            ele.cell_type.clone(),
-            res.get(&ele.cell_type).copied().unwrap() + 1,
-        );
-    }
-    return res;
-}
-
 pub fn rnd_fill_empty(field: &Vec<Cell>, count: usize, cell_type: CellType) -> Vec<Cell> {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
     let mut return_field = field.clone().to_vec();
     let side = f32::sqrt(return_field.len() as f32).floor() as usize;
     let mut to_fill: usize = count;
     while to_fill > 0 {
-        let x = thread_rng().gen_range(0..side);
-        let y = thread_rng().gen_range(0..side);
+        let x = rng.gen_range(0..side);
+        let y = rng.gen_range(0..side);
         match cartesian_to_linear(x, y, &return_field) {
             Ok(coord) => match return_field[coord].cell_type {
                 CellType::Empty => {
                     return_field[coord].cell_type = cell_type.clone();
-                    return_field[coord].age = rand::thread_rng().gen_range(0..10);
+                    return_field[coord].age = rng.gen_range(0..10);
                     to_fill -= 1;
                 }
                 _ => (),
@@ -229,19 +207,20 @@ pub fn print_field(field: &Vec<Cell>) {
 
 fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
     let mut return_field: Vec<Cell> = field.clone().to_vec();
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
     for (index, ele) in field.iter().enumerate() {
         if ele.age < 8 {
             continue;
         }
         match ele.propagation {
             1 => {
-                let x_p: f32 = thread_rng().gen();
-                let y_p: f32 = thread_rng().gen();
+                let x_p: f32 = rng.gen();
+                let y_p: f32 = rng.gen();
                 let offset: [isize; 2];
                 if y_p > x_p {
-                    offset = [0, *vec![-1, 1].choose(&mut thread_rng()).unwrap()];
+                    offset = [0, *vec![-1, 1].choose(&mut rng).unwrap()];
                 } else {
-                    offset = [*vec![-1, 1].choose(&mut thread_rng()).unwrap(), 0];
+                    offset = [*vec![-1, 1].choose(&mut rng).unwrap(), 0];
                 }
                 let (mut x, mut y) = linear_to_cartesian(index, field).unwrap();
                 match x.checked_add_signed(offset[0]) {
