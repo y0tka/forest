@@ -47,8 +47,8 @@ impl Cell {
         }
     }
 
-    pub fn step(&mut self) -> Self {
-        if self.age > 15 && self.cell_type == CellType::Flame {
+    pub fn step(&mut self, config: &PropagationConfig) -> Self {
+        if self.age > config.flame_longevity.into() && self.cell_type == CellType::Flame {
             return Self {
                 age: 0,
                 cell_type: CellType::Empty,
@@ -71,12 +71,12 @@ pub enum CellType {
     Flame,
 }
 
-pub fn get_field_step(field: &[Cell]) -> Vec<Cell> {
+pub fn get_field_step(field: &[Cell], config: &PropagationConfig) -> Vec<Cell> {
     let mut return_field = field.to_vec();
     for cell in return_field.iter_mut() {
-        *cell = cell.step();
+        *cell = cell.step(config);
     }
-    return_field = propagate(&return_field);
+    return_field = propagate(&return_field, config);
     return_field
 }
 
@@ -141,11 +141,11 @@ fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell
     return_field
 }
 
-fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
+fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
     let mut return_field: Vec<Cell> = field.clone().to_vec();
     let mut rng = ChaCha8Rng::seed_from_u64(0);
     for (index, ele) in field.iter().enumerate() {
-        if ele.age < 8 {
+        if ele.age < config.propagation_threshold.into() {
             continue;
         }
         if ele.propagation == 1 {
