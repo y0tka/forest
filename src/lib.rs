@@ -4,15 +4,28 @@ use rand_chacha::ChaCha8Rng;
 
 use std::iter::repeat_with;
 
-use ansi_term::Colour;
-use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Cell {
     pub age: usize,
     pub cell_type: CellType,
     pub propagation: u8,
+}
+
+#[derive(Default)]
+pub struct PropagationConfig {
+    pub flame_longevity: u8,
+    pub propagation_threshold: u8,
+}
+
+impl PropagationConfig {
+    pub fn new() -> Self {
+        Self {
+            flame_longevity: 15,
+            propagation_threshold: 8,
+        }
+    }
 }
 
 impl Default for Cell {
@@ -34,59 +47,6 @@ impl Cell {
         }
     }
 
-    #[allow(unreachable_patterns)]
-    pub fn print(&self) {
-        match self.cell_type {
-            CellType::Empty => print!("  "),
-            CellType::Grass => {
-                print!(
-                    "{} ",
-                    Colour::Green.paint(match self.age {
-                        0 => "▁",
-                        1 => "▂",
-                        2 => "▃",
-                        3 => "▄",
-                        4 => "▅",
-                        5 => "▆",
-                        6 => "▇",
-                        _ => "󱔐",
-                    })
-                );
-            }
-            CellType::Tree => {
-                print!(
-                    "{} ",
-                    Colour::Green.paint(match self.age {
-                        0 => "▁",
-                        1 => "▂",
-                        2 => "▃",
-                        3 => "▄",
-                        4 => "▅",
-                        5 => "▆",
-                        6 => "▇",
-                        _ => "",
-                    })
-                )
-            }
-            CellType::Flame => {
-                print!(
-                    "{} ",
-                    Colour::Red.paint(match self.age {
-                        0 => "▁",
-                        1 => "▂",
-                        2 => "▃",
-                        3 => "▄",
-                        4 => "▅",
-                        5 => "▆",
-                        6 => "▇",
-                        _ => "",
-                    })
-                )
-            }
-            _ => print!("? "),
-        }
-    }
-
     pub fn step(&mut self) -> Self {
         if self.age > 15 && self.cell_type == CellType::Flame {
             return Self {
@@ -103,7 +63,7 @@ impl Cell {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter)]
 pub enum CellType {
     Empty,
     Grass,
@@ -159,7 +119,7 @@ pub fn linear_to_cartesian(
     Ok((position % side, position / side))
 }
 
-pub fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell> {
+fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell> {
     let mut rng = ChaCha8Rng::seed_from_u64(0);
     let mut return_field = field.to_vec();
     let side = f32::sqrt(return_field.len() as f32).floor() as usize;
@@ -179,29 +139,6 @@ pub fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<
         }
     }
     return_field
-}
-
-pub fn print_field(field: &Vec<Cell>) {
-    let side = f32::sqrt(field.len() as f32).floor() as usize;
-    print!("┌");
-    print!("{}", "─".repeat(side * 2));
-    println!("┐");
-    for row in 0..side {
-        print!("│");
-        for col in 0..side {
-            match cartesian_to_linear(row, col, field) {
-                Ok(coord) => {
-                    field[coord].print();
-                }
-                Err(_) => todo!(),
-            }
-        }
-        print!("│");
-        println!();
-    }
-    print!("└");
-    print!("{}", "─".repeat(side * 2));
-    println!("┘");
 }
 
 fn propagate(field: &Vec<Cell>) -> Vec<Cell> {
