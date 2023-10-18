@@ -10,6 +10,3 @@ rand_xorshift = "0.3.0"
 str = "0.1.4"
 strum = "0.25.0"
 strum_macros = "0.25.2"
-
-[[bin]]
-name = "perf_test"
