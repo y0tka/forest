@@ -9,7 +9,7 @@ use strum_macros::EnumIter;
 pub struct Cell {
     pub age: usize,
     pub cell_type: CellType,
-    pub propagation: u8,
+    pub propagatable: bool,
 }
 
 #[derive(Default)]
@@ -32,7 +32,7 @@ impl Default for Cell {
         Self {
             age: 0,
             cell_type: CellType::Empty,
-            propagation: 1,
+            propagatable: false,
         }
     }
 }
@@ -42,7 +42,7 @@ impl Cell {
         Cell {
             age: 0,
             cell_type: CellType::Empty,
-            propagation: 1,
+            propagatable: false,
         }
     }
 
@@ -51,13 +51,13 @@ impl Cell {
             return Self {
                 age: 0,
                 cell_type: CellType::Empty,
-                propagation: 0,
+                propagatable: false,
             };
         }
         Self {
             age: self.age + 1,
             cell_type: self.cell_type,
-            propagation: self.propagation,
+            propagatable: self.propagatable,
         }
     }
 }
@@ -131,6 +131,7 @@ fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell
                 if CellType::Empty == return_field[coord].cell_type {
                     return_field[coord].cell_type = cell_type;
                     return_field[coord].age = rng.gen_range(0..10);
+                    return_field[coord].propagatable = true;
                     to_fill -= 1;
                 }
             }
@@ -147,7 +148,7 @@ fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
         if ele.age < config.propagation_threshold.into() {
             continue;
         }
-        if ele.propagation == 1 {
+        if ele.propagatable {
             let x_offset: isize;
             let y_offset: isize;
             if rng.gen::<f32>() >= 0.5 {
@@ -173,14 +174,14 @@ fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
                         if CellType::Empty == return_field[coord].cell_type {
                             return_field[coord].cell_type = ele.cell_type;
                             return_field[coord].age = 0;
-                            return_field[coord].propagation = 1;
+                            return_field[coord].propagatable = true;
                         }
                     }
                     CellType::Flame => match return_field[coord].cell_type {
                         CellType::Grass | CellType::Tree => {
                             return_field[coord].cell_type = ele.cell_type;
                             return_field[coord].age = 0;
-                            return_field[coord].propagation = 1;
+                            return_field[coord].propagatable = true;
                         }
                         _ => (),
                     },
