@@ -1,6 +1,5 @@
 use rand::prelude::*;
-use rand::seq::SliceRandom;
-use rand_chacha::ChaCha8Rng;
+use rand_xorshift::XorShiftRng;
 
 use std::iter::repeat_with;
 
@@ -57,13 +56,13 @@ impl Cell {
         }
         Self {
             age: self.age + 1,
-            cell_type: self.cell_type.clone(),
+            cell_type: self.cell_type,
             propagation: self.propagation,
         }
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, EnumIter, Copy)]
 pub enum CellType {
     Empty,
     Grass,
@@ -120,7 +119,7 @@ pub fn linear_to_cartesian(
 }
 
 fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell> {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = XorShiftRng::seed_from_u64(0);
     let mut return_field = field.to_vec();
     let side = f32::sqrt(return_field.len() as f32).floor() as usize;
     let mut to_fill: usize = count;
@@ -130,7 +129,7 @@ fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell
         match cartesian_to_linear(x, y, &return_field) {
             Ok(coord) => {
                 if CellType::Empty == return_field[coord].cell_type {
-                    return_field[coord].cell_type = cell_type.clone();
+                    return_field[coord].cell_type = cell_type;
                     return_field[coord].age = rng.gen_range(0..10);
                     to_fill -= 1;
                 }
@@ -142,26 +141,22 @@ fn rnd_fill_empty(field: &[Cell], count: usize, cell_type: CellType) -> Vec<Cell
 }
 
 fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
-    let mut return_field: Vec<Cell> = field.clone().to_vec();
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut return_field: Vec<Cell> = field.to_vec();
+    let mut rng = XorShiftRng::seed_from_u64(0);
     for (index, ele) in field.iter().enumerate() {
         if ele.age < config.propagation_threshold.into() {
             continue;
         }
         if ele.propagation == 1 {
-            let x_p: f32 = rng.gen();
-            let y_p: f32 = rng.gen();
-            let offset: [isize; 2] = if y_p > x_p {
-                [0, *[-1, 1].choose(&mut rng).unwrap()]
-            } else {
-                [*[-1, 1].choose(&mut rng).unwrap(), 0]
-            };
+            let x_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
+            let y_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
+
             let (mut x, mut y) = linear_to_cartesian(index, field).unwrap();
-            match x.checked_add_signed(offset[0]) {
+            match x.checked_add_signed(x_offset) {
                 Some(res) => x = res,
                 None => continue,
             }
-            match y.checked_add_signed(offset[1]) {
+            match y.checked_add_signed(y_offset) {
                 Some(res) => y = res,
                 None => continue,
             }
@@ -169,14 +164,14 @@ fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
                 Ok(coord) => match ele.cell_type {
                     CellType::Grass | CellType::Tree => {
                         if CellType::Empty == return_field[coord].cell_type {
-                            return_field[coord].cell_type = ele.cell_type.clone();
+                            return_field[coord].cell_type = ele.cell_type;
                             return_field[coord].age = 0;
                             return_field[coord].propagation = 1;
                         }
                     }
                     CellType::Flame => match return_field[coord].cell_type {
                         CellType::Grass | CellType::Tree => {
-                            return_field[coord].cell_type = ele.cell_type.clone();
+                            return_field[coord].cell_type = ele.cell_type;
                             return_field[coord].age = 0;
                             return_field[coord].propagation = 1;
                         }
