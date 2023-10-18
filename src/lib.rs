@@ -148,8 +148,15 @@ fn propagate(field: &Vec<Cell>, config: &PropagationConfig) -> Vec<Cell> {
             continue;
         }
         if ele.propagation == 1 {
-            let x_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
-            let y_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
+            let x_offset: isize;
+            let y_offset: isize;
+            if rng.gen::<f32>() >= 0.5 {
+                x_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
+                y_offset = 0;
+            } else {
+                x_offset = 0;
+                y_offset = if rng.gen::<f32>() >= 0.5 { -1 } else { 1 };
+            }
 
             let (mut x, mut y) = linear_to_cartesian(index, field).unwrap();
             match x.checked_add_signed(x_offset) {
